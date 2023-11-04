@@ -115,7 +115,7 @@ struct Proxy
 #define V2RAY_DEFAULT_GROUP "V2RayProvider"
 #define XRAY_DEFAULT_GROUP "XRayProvider"
 #define HYSTERIA_DEFAULT_GROUP "HysteriaProvider"
-#define HYSTERIA_DEFAULT_GROUP "Hysteria2Provider"
+#define HYSTERIA2_DEFAULT_GROUP "Hysteria2Provider"
 #define SOCKS_DEFAULT_GROUP "SocksProvider"
 #define HTTP_DEFAULT_GROUP "HTTPProvider"
 #define TROJAN_DEFAULT_GROUP "TrojanProvider"
