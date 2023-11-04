@@ -1444,7 +1444,7 @@ void explodeStdHysteria2(std::string hysteria2, Proxy &node)
 {
     std::string add, port, type, auth, host, insecure, up, down, alpn, obfsParam, remarks;
     std::string addition;
-    hysteria2 = hysteria2.substr(11);
+    hysteria2 = hysteria2.substr(12);
     string_size pos;
 
     pos = hysteria2.rfind("#");
