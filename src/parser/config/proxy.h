@@ -37,6 +37,8 @@ inline String getProxyTypeName(int type)
         return "VLESS";
     case ProxyType::Hysteria:
         return "Hysteria";
+    case ProxyType::Hysteria2:
+        return "Hysteria2";
     case ProxyType::Trojan:
         return "Trojan";
     case ProxyType::Snell:
