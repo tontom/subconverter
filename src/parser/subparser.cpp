@@ -79,6 +79,19 @@ void hysteriaConstruct(Proxy &node, const std::string &group, const std::string 
     node.FakeType = type;
 }
 
+void hysteria2Construct(Proxy &node, const std::string &group, const std::string &remarks, const std::string &add, const std::string &port, const std::string &type, const std::string &auth, const std::string &host, const std::string &up, const std::string &down, const std::string &alpn, const std::string &obfsParam, const std::string &insecure ,tribool udp, tribool tfo, tribool scv, tribool tls13)
+{
+    commonConstruct(node, ProxyType::Hysteria2, group, remarks, add, port, udp, tfo, scv, tls13);
+    node.Auth = auth;
+    node.Host = (host.empty() && !isIPv4(add) && !isIPv6(add)) ? add.data() : trim(host);
+    node.UpMbps = up;
+    node.DownMbps = down;
+    node.Alpn = alpn;
+    node.OBFSParam = obfsParam;
+    node.Insecure = insecure;
+    node.FakeType = type;
+}
+
 void vlessConstruct(Proxy &node, const std::string &group, const std::string &remarks, const std::string &add, const std::string &port, const std::string &type, const std::string &id, const std::string &aid, const std::string &net, const std::string &cipher, const std::string &flow, const std::string &mode, const std::string &path, const std::string &host, const std::string &edge, const std::string &tls,const std::string &pbk, const std::string &sid, const std::string &fp ,tribool udp, tribool tfo, tribool scv, tribool tls13)
 {
     commonConstruct(node, ProxyType::VLESS, group, remarks, add, port, udp, tfo, scv, tls13);
@@ -184,6 +197,16 @@ void explodeHysteria(std::string hysteria, Proxy &node)
     if(regMatch(hysteria, "hysteria://(.*?)[:](.*)"))
     {
         explodeStdHysteria(hysteria, node);
+        return;
+    }
+}
+
+void explodeHysteria2(std::string hysteria2, Proxy &node)
+{   
+    printf("explodeHysteria2\n");
+    if(regMatch(hysteria2, "hysteria2://(.*?)[:](.*)"))
+    {
+        explodeStdHysteria2(hysteria2, node);
         return;
     }
 }
@@ -1404,6 +1427,38 @@ void explodeStdHysteria(std::string hysteria, Proxy &node)
     return;
 }
 
+void explodeStdHysteria2(std::string hysteria2, Proxy &node)
+{
+    std::string add, port, type, auth, host, insecure, up, down, alpn, obfsParam, remarks;
+    std::string addition;
+    hysteria2 = hysteria2.substr(11);
+    string_size pos;
+
+    pos = hysteria2.rfind("#");
+    if(pos != hysteria2.npos)
+    {
+        remarks = urlDecode(hysteria2.substr(pos + 1));
+        hysteria2.erase(pos);
+    }
+    const std::string stdhysteria2_matcher = R"(^(.*)[:](\d+)[?](.*)$)";
+    if(regGetMatch(hysteria2, stdhysteria2_matcher, 4, 0, &add, &port, &addition))
+        return;
+    type = getUrlArg(addition,"protocol");
+    auth = getUrlArg(addition,"auth");
+    host = getUrlArg(addition,"peer");
+    insecure = getUrlArg(addition, "insecure");
+    up = getUrlArg(addition,"upmbps");
+    down = getUrlArg(addition,"downmbps");
+    alpn = getUrlArg(addition,"alpn");
+    obfsParam = getUrlArg(addition,"obfsParam");
+
+    if(remarks.empty())
+        remarks = add + ":" + port;
+
+    hysteria2Construct(node, HYSTERIA2_DEFAULT_GROUP, remarks, add, port, type, auth, host, up, down, alpn, obfsParam, insecure);
+    return;
+}
+
 void explodeStdVless(std::string vless, Proxy &node)
 {
     std::string add, port, type, id, aid, net, flow, pbk, sid, fp, mode, path, host, tls, remarks;
@@ -2335,6 +2390,8 @@ void explode(const std::string &link, Proxy &node)
         explodeVless(link, node);
     else if(strFind(link, "hysteria://"))
         explodeHysteria(link, node);
+    else if(strFind(link, "hysteria2://"))
+        explodeHysteria2(link, node);
     else if(strFind(link, "ss://"))
         explodeSS(link, node);
     else if(strFind(link, "socks://") || strFind(link, "https://t.me/socks") || strFind(link, "tg://socks"))
