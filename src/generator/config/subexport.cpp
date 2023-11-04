@@ -234,6 +234,7 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             if (!x.ShortId.empty())
                 singleproxy["reality-opts"]["short-id"] = x.ShortId;
         }
+        singleproxy["client-fingerprint"] = "chrome";
         if (!x.Fingerprint.empty())
             singleproxy["client-fingerprint"] = x.Fingerprint;
         switch (x.Type) {
