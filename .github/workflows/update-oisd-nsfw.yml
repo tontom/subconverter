@@ -1,13 +1,13 @@
-name: Update OISD & anti-AD rules
+name: Update OISD NSFW rules
 
 on:
   schedule:
-    # 每周一 00:00 UTC（北京时间周一 08:00）
+    # 每周一 00:00 UTC 执行一次（北京时间周一早上 8 点）
     - cron: "0 0 * * 1"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write   # 允许提交代码到当前仓库
 
 jobs:
   build:
@@ -18,48 +18,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate Clash classic lists (DOMAIN-SUFFIX)
+      - name: Generate Clash classic list (DOMAIN-SUFFIX)
         shell: bash
         run: |
           set -euo pipefail
+          SRC_URL="https://raw.githubusercontent.com/sjhgvr/oisd/refs/heads/main/domainswild2_nsfw.txt"
           mkdir -p rules
-          changed=0
+          tmp=$(mktemp)
 
-          gen() {
-            local name="$1" src="$2" out="rules/${name}.list"
-            local tmp
-            tmp="$(mktemp)"
+          # 拉取 → 去注释/空行 → 去 *. / . 前缀 → 过滤合法域名 → 去重 → 加 DOMAIN-SUFFIX 前缀
+          curl -fsSL "$SRC_URL" \
+          | sed -e 's/^[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' \
+                -e 's/^\*\.\?//g' -e 's/^\.//g' \
+          | grep -E '^[0-9a-z.-]+\.[a-z]{2,}$' \
+          | sort -u \
+          | awk '{print "DOMAIN-SUFFIX," $0}' > "$tmp"
 
-            echo ">> Fetching ${name} from ${src}"
-            curl -fsSL "$src" \
-            | sed -e 's/^[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' \
-                  -e 's/^\*\.\?//g' -e 's/^\.//g' \
-            | grep -E '^[0-9a-z.-]+\.[a-z]{2,}$' \
-            | sort -u \
-            | awk '{print "DOMAIN-SUFFIX," $0}' > "$tmp"
-
-            if [ ! -f "$out" ] || ! cmp -s "$tmp" "$out"; then
-              mv "$tmp" "$out"
-              echo "Updated $out ($(wc -l < "$out") lines)."
-              changed=1
-            else
-              echo "No changes for $out."
-              rm -f "$tmp"
-            fi
-          }
-
-          # 1) OISD nsfw domains
-          gen "oisd_nsfw" "https://raw.githubusercontent.com/sjhgvr/oisd/refs/heads/main/domainswild2_nsfw.txt"
-
-          # 2) anti-AD domains
-          gen "anti_ad" "https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/refs/heads/master/anti-ad-domains.txt"
-
-          if [ "$changed" -eq 1 ]; then
+          # 仅在有变化时提交
+          if [ ! -f rules/oisd_nsfw.list ] || ! cmp -s "$tmp" rules/oisd_nsfw.list; then
+            mv "$tmp" rules/oisd_nsfw.list
+            echo "Updated rules. $(wc -l < rules/oisd_nsfw.list) lines."
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add rules/oisd_nsfw.list rules/anti_ad.list
-            git commit -m "chore: update ad rule lists ($(date -u +'%Y-%m-%dT%H:%M:%SZ'))"
+            git add rules/oisd_nsfw.list
+            git commit -m "chore: update oisd_nsfw.list ($(date -u +'%Y-%m-%dT%H:%M:%SZ'))"
             git push
           else
-            echo "Nothing to commit."
+            echo "No changes."
           fi
