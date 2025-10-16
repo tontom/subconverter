@@ -1,0 +1,48 @@
+name: Update Anti_AD rules
+
+on:
+  schedule:
+    # 每周一 00:00 UTC 执行一次（北京时间周一早上 8 点）
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 允许提交代码到当前仓库
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate Clash classic list (DOMAIN-SUFFIX)
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC_URL="https://raw.githubusercontent.com/privacy-protection-tools/anti-AD/refs/heads/master/anti-ad-domains.txt"
+          mkdir -p rules
+          tmp=$(mktemp)
+
+          # 拉取 → 去注释/空行 → 去 *. / . 前缀 → 过滤合法域名 → 去重 → 加 DOMAIN-SUFFIX 前缀
+          curl -fsSL "$SRC_URL" \
+          | sed -e 's/^[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' \
+                -e 's/^\*\.\?//g' -e 's/^\.//g' \
+          | grep -E '^[0-9a-z.-]+\.[a-z]{2,}$' \
+          | sort -u \
+          | awk '{print "DOMAIN-SUFFIX," $0}' > "$tmp"
+
+          # 仅在有变化时提交
+          if [ ! -f rules/anti_ad.list ] || ! cmp -s "$tmp" rules/anti_ad.list; then
+            mv "$tmp" rules/anti_ad.list
+            echo "Updated rules. $(wc -l < rules/anti_ad.list) lines."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add rules/anti_ad.list
+            git commit -m "chore: update anti_ad.list ($(date -u +'%Y-%m-%dT%H:%M:%SZ'))"
+            git push
+          else
+            echo "No changes."
+          fi
